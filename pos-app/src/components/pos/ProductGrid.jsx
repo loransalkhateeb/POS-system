@@ -4,6 +4,14 @@ import { categories } from '../../data/sampleData';
 import ProductCard from './ProductCard';
 import SearchBar from '../ui/SearchBar';
 
+const categoryLabels = {
+  'All': 'الكل',
+  'Hot Drinks': 'مشروبات ساخنة',
+  'Cold Drinks': 'مشروبات باردة',
+  'Pastries': 'معجنات',
+  'Food': 'طعام',
+};
+
 export default function ProductGrid() {
   const dispatch = useDispatch();
   const products = useSelector(selectFilteredProducts);
@@ -15,7 +23,7 @@ export default function ProductGrid() {
         <SearchBar
           value={searchQuery}
           onChange={(val) => dispatch(setSearchQuery(val))}
-          placeholder="Search products..."
+          placeholder="ابحث عن المنتجات..."
         />
       </div>
 
@@ -33,7 +41,7 @@ export default function ProductGrid() {
               }
             `}
           >
-            {cat}
+            {categoryLabels[cat] || cat}
           </button>
         ))}
       </div>
@@ -46,8 +54,8 @@ export default function ProductGrid() {
         </div>
         {products.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-            <p className="text-lg font-medium">No products found</p>
-            <p className="text-sm mt-1">Try adjusting your search or category</p>
+            <p className="text-lg font-medium">لا توجد منتجات</p>
+            <p className="text-sm mt-1">جرب تعديل البحث أو الفئة</p>
           </div>
         )}
       </div>

@@ -6,11 +6,11 @@ import { HiOfficeBuilding, HiCurrencyDollar, HiPrinter, HiUser } from 'react-ico
 
 export default function Settings() {
   const [settings, setSettings] = useState({
-    storeName: 'QuickPOS Store',
+    storeName: 'متجر Havana House',
     currency: 'USD',
     taxRate: '10',
-    receiptFooter: 'Thank you for your purchase!',
-    adminName: 'Admin',
+    receiptFooter: 'شكراً لتسوقكم معنا!',
+    adminName: 'المسؤول',
     adminEmail: 'admin@quickpos.com',
   });
 
@@ -24,18 +24,18 @@ export default function Settings() {
             <HiOfficeBuilding className="w-5 h-5 text-primary-600" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-800">Store Information</h3>
-            <p className="text-xs text-gray-400">Basic store configuration</p>
+            <h3 className="font-bold text-gray-800">معلومات المتجر</h3>
+            <p className="text-xs text-gray-400">إعدادات المتجر الأساسية</p>
           </div>
         </div>
         <div className="space-y-4">
           <Input
-            label="Store Name"
+            label="اسم المتجر"
             value={settings.storeName}
             onChange={(e) => update('storeName', e.target.value)}
           />
           <Input
-            label="Receipt Footer Message"
+            label="رسالة أسفل الإيصال"
             value={settings.receiptFooter}
             onChange={(e) => update('receiptFooter', e.target.value)}
           />
@@ -48,26 +48,26 @@ export default function Settings() {
             <HiCurrencyDollar className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-800">Tax & Currency</h3>
-            <p className="text-xs text-gray-400">Financial settings</p>
+            <h3 className="font-bold text-gray-800">الضريبة والعملة</h3>
+            <p className="text-xs text-gray-400">الإعدادات المالية</p>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Currency</label>
+            <label className="block text-sm font-medium text-gray-700">العملة</label>
             <select
               value={settings.currency}
               onChange={(e) => update('currency', e.target.value)}
               className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
             >
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (&euro;)</option>
-              <option value="GBP">GBP (&pound;)</option>
-              <option value="IQD">IQD (د.ع)</option>
+              <option value="USD">دولار ($)</option>
+              <option value="EUR">يورو (&euro;)</option>
+              <option value="GBP">جنيه إسترليني (&pound;)</option>
+              <option value="IQD">دينار عراقي (د.ع)</option>
             </select>
           </div>
           <Input
-            label="Tax Rate (%)"
+            label="نسبة الضريبة (%)"
             type="number"
             value={settings.taxRate}
             onChange={(e) => update('taxRate', e.target.value)}
@@ -81,18 +81,18 @@ export default function Settings() {
             <HiUser className="w-5 h-5 text-emerald-600" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-800">Admin Profile</h3>
-            <p className="text-xs text-gray-400">Your account details</p>
+            <h3 className="font-bold text-gray-800">الملف الشخصي</h3>
+            <p className="text-xs text-gray-400">تفاصيل حسابك</p>
           </div>
         </div>
         <div className="space-y-4">
           <Input
-            label="Name"
+            label="الاسم"
             value={settings.adminName}
             onChange={(e) => update('adminName', e.target.value)}
           />
           <Input
-            label="Email"
+            label="البريد الإلكتروني"
             type="email"
             value={settings.adminEmail}
             onChange={(e) => update('adminEmail', e.target.value)}
@@ -106,24 +106,24 @@ export default function Settings() {
             <HiPrinter className="w-5 h-5 text-orange-600" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-800">Receipt Settings</h3>
-            <p className="text-xs text-gray-400">Configure receipt printing</p>
+            <h3 className="font-bold text-gray-800">إعدادات الإيصال</h3>
+            <p className="text-xs text-gray-400">إعدادات طباعة الإيصالات</p>
           </div>
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-700">Auto-print Receipt</p>
-            <p className="text-xs text-gray-400">Print receipt after each sale</p>
+            <p className="text-sm font-medium text-gray-700">طباعة تلقائية للإيصال</p>
+            <p className="text-xs text-gray-400">طباعة الإيصال بعد كل عملية بيع</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-primary-500/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+            <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-primary-500/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
           </label>
         </div>
       </Card>
 
-      <div className="flex justify-end">
-        <Button size="lg">Save Changes</Button>
+      <div className="flex justify-start">
+        <Button size="lg">حفظ التغييرات</Button>
       </div>
     </div>
   );

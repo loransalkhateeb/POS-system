@@ -5,15 +5,26 @@ import Badge from '../components/ui/Badge';
 import { HiCheck, HiX } from 'react-icons/hi';
 
 const filters = [
-  { value: 'all', label: 'All Orders' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'pending', label: 'Pending' },
+  { value: 'all', label: 'جميع الطلبات' },
+  { value: 'completed', label: 'مكتملة' },
+  { value: 'pending', label: 'قيد الانتظار' },
 ];
 
 const statusColors = {
   completed: 'green',
   pending: 'yellow',
   cancelled: 'red',
+};
+
+const statusLabels = {
+  completed: 'مكتمل',
+  pending: 'قيد الانتظار',
+  cancelled: 'ملغي',
+};
+
+const paymentLabels = {
+  Cash: 'نقداً',
+  Card: 'بطاقة',
 };
 
 export default function Orders() {
@@ -53,8 +64,8 @@ export default function Orders() {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="text-sm font-bold text-gray-800">{order.id}</h4>
-                    <Badge color={statusColors[order.status]}>{order.status}</Badge>
-                    <Badge color="blue">{order.paymentMethod}</Badge>
+                    <Badge color={statusColors[order.status]}>{statusLabels[order.status]}</Badge>
+                    <Badge color="blue">{paymentLabels[order.paymentMethod] || order.paymentMethod}</Badge>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
                     {order.customer} &middot; {order.date}
@@ -65,7 +76,7 @@ export default function Orders() {
                         key={i}
                         className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md"
                       >
-                        {item.qty}x {item.name}
+                        {item.qty}× {item.name}
                       </span>
                     ))}
                   </div>
@@ -79,14 +90,14 @@ export default function Orders() {
                     <button
                       onClick={() => dispatch(updateOrderStatus({ id: order.id, status: 'completed' }))}
                       className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
-                      title="Complete"
+                      title="إكمال"
                     >
                       <HiCheck className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => dispatch(updateOrderStatus({ id: order.id, status: 'cancelled' }))}
                       className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-                      title="Cancel"
+                      title="إلغاء"
                     >
                       <HiX className="w-4 h-4" />
                     </button>
@@ -100,8 +111,8 @@ export default function Orders() {
 
       {orders.length === 0 && (
         <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No orders found</p>
-          <p className="text-sm mt-1">Orders will appear here once created</p>
+          <p className="text-lg font-medium">لا توجد طلبات</p>
+          <p className="text-sm mt-1">ستظهر الطلبات هنا بعد إنشائها</p>
         </div>
       )}
     </div>

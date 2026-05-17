@@ -1,7 +1,7 @@
 import { HiSearch } from 'react-icons/hi';
 import Input from './Input';
 
-export default function SearchBar({ value, onChange, placeholder = 'Search...' }) {
+export default function SearchBar({ value, onChange, placeholder = 'بحث...' }) {
   return (
     <Input
       icon={HiSearch}

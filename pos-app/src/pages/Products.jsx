@@ -1,168 +1,487 @@
-import { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { addProduct, deleteProduct } from '../features/products/productsSlice';
-import { HiPlus, HiPencil, HiTrash, HiSearch } from 'react-icons/hi';
-import Card from '../components/ui/Card';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  HiCube,
+  HiPlus,
+  HiPencil,
+  HiTrash,
+  HiRefresh,
+  HiExclamationCircle,
+  HiSearch,
+  HiCurrencyDollar,
+  HiTag,
+  HiExclamation,
+} from 'react-icons/hi';
 import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
+import Badge from '../components/ui/Badge';
+
+const API_BASE = 'http://localhost:5000/api/admin';
 
 export default function Products() {
-  const dispatch = useDispatch();
-  const products = useSelector((state) => state.products.items);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', price: '', category: 'Hot Drinks', stock: '', image: '' });
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({
+    name: '', barcode: '', categoryId: '', purchasePrice: '', salePrice: '', quantity: '', minQuantity: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [categories, setCategories] = useState([]);
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const handleSubmit = () => {
-    if (!form.name || !form.price) return;
-    dispatch(
-      addProduct({
-        id: Date.now(),
-        name: form.name,
-        price: parseFloat(form.price),
-        category: form.category,
-        stock: parseInt(form.stock) || 0,
-        image: form.image || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200',
-      })
-    );
-    setForm({ name: '', price: '', category: 'Hot Drinks', stock: '', image: '' });
-    setShowForm(false);
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/products`, { headers });
+      if (!res.ok) throw new Error(`فشل في تحميل المنتجات (${res.status})`);
+      const data = await res.json();
+      setProducts(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/categories`, { headers });
+      if (res.ok) setCategories(await res.json());
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, [fetchProducts, fetchCategories]);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.salePrice) return;
+    setSaving(true);
+    try {
+      const url = editing ? `${API_BASE}/products/${editing.id}` : `${API_BASE}/products`;
+      const method = editing ? 'PUT' : 'POST';
+
+      const body = {
+        name: form.name,
+        barcode: form.barcode,
+        categoryId: form.categoryId || undefined,
+        purchasePrice: parseFloat(form.purchasePrice) || 0,
+        salePrice: parseFloat(form.salePrice) || 0,
+        quantity: parseInt(form.quantity) || 0,
+        minQuantity: parseInt(form.minQuantity) || 0,
+      };
+
+      const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error('فشل في حفظ المنتج');
+
+      closeForm();
+      fetchProducts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(deleteTarget.id);
+    try {
+      const res = await fetch(`${API_BASE}/products/${deleteTarget.id}`, { method: 'DELETE', headers });
+      if (!res.ok) throw new Error('فشل في حذف المنتج');
+      setDeleteTarget(null);
+      fetchProducts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const openEdit = (product) => {
+    setEditing(product);
+    setForm({
+      name: product.name,
+      barcode: product.barcode || '',
+      categoryId: product.categoryId || '',
+      purchasePrice: product.purchasePrice || '',
+      salePrice: product.salePrice || '',
+      quantity: product.quantity?.toString() || '',
+      minQuantity: product.minQuantity?.toString() || '',
+    });
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditing(null);
+    setForm({ name: '', barcode: '', categoryId: '', purchasePrice: '', salePrice: '', quantity: '', minQuantity: '' });
+  };
+
+  const filtered = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.barcode || '').includes(search) ||
+    (p.category?.name || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalValue = products.reduce((sum, p) => sum + (parseFloat(p.salePrice) || 0) * (p.quantity || 0), 0);
+  const lowStock = products.filter((p) => p.quantity <= p.minQuantity).length;
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="relative w-full sm:w-72">
-          <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-          />
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500 font-medium">إجمالي المنتجات</p>
+              <p className="text-3xl font-bold text-gray-800">{products.length}</p>
+              <p className="text-xs text-gray-400">منتج مسجل</p>
+            </div>
+            <div className="p-3 rounded-xl bg-primary-50 text-primary-600 shadow-lg shadow-primary-500/10">
+              <HiCube className="w-6 h-6" />
+            </div>
+          </div>
         </div>
-        <Button icon={HiPlus} onClick={() => setShowForm(true)}>
-          Add Product
-        </Button>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500 font-medium">قيمة المخزون</p>
+              <p className="text-3xl font-bold text-gray-800">${totalValue.toFixed(2)}</p>
+              <p className="text-xs text-gray-400">بسعر البيع</p>
+            </div>
+            <div className="p-3 rounded-xl bg-blue-50 text-blue-600 shadow-lg shadow-blue-500/10">
+              <HiCurrencyDollar className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500 font-medium">التصنيفات</p>
+              <p className="text-3xl font-bold text-gray-800">{new Set(products.map(p => p.category?.name)).size}</p>
+              <p className="text-xs text-gray-400">تصنيف نشط</p>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 shadow-lg shadow-emerald-500/10">
+              <HiTag className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500 font-medium">مخزون منخفض</p>
+              <p className={`text-3xl font-bold ${lowStock > 0 ? 'text-red-600' : 'text-gray-800'}`}>{lowStock}</p>
+              <p className="text-xs text-gray-400">منتج يحتاج إعادة تعبئة</p>
+            </div>
+            <div className={`p-3 rounded-xl ${lowStock > 0 ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'} shadow-lg`}>
+              <HiExclamation className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <Card className="overflow-hidden !p-0">
+      {/* Search & Actions */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <HiSearch className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="ابحث بالاسم أو الباركود أو التصنيف..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" icon={HiRefresh} onClick={fetchProducts} size="md">
+            تحديث
+          </Button>
+          <Button icon={HiPlus} onClick={() => { closeForm(); setShowForm(true); }}>
+            إضافة منتج
+          </Button>
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 animate-fadeIn">
+          <HiExclamationCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <p className="text-sm font-semibold text-red-700 flex-1">{error}</p>
+          <button onClick={() => setError('')} className="text-xs text-red-500 hover:text-red-700 font-semibold">إغلاق</button>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fadeIn">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50/80 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                <th className="px-5 py-3">Product</th>
-                <th className="px-5 py-3 hidden sm:table-cell">Category</th>
-                <th className="px-5 py-3">Price</th>
-                <th className="px-5 py-3 hidden md:table-cell">Stock</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+              <tr className="bg-gray-50/80 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3.5 w-12">#</th>
+                <th className="px-4 py-3.5">المنتج</th>
+                <th className="px-4 py-3.5 hidden sm:table-cell">الباركود</th>
+                <th className="px-4 py-3.5 hidden md:table-cell">التصنيف</th>
+                <th className="px-4 py-3.5">سعر الشراء</th>
+                <th className="px-4 py-3.5">سعر البيع</th>
+                <th className="px-4 py-3.5 hidden lg:table-cell">الكمية</th>
+                <th className="px-4 py-3.5 hidden xl:table-cell">الحد الأدنى</th>
+                <th className="px-4 py-3.5 hidden xl:table-cell">آخر تحديث</th>
+                <th className="px-4 py-3.5 text-left">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-10 h-10 rounded-lg object-cover"
-                      />
-                      <span className="text-sm font-semibold text-gray-800">{product.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 hidden sm:table-cell">
-                    <Badge color="purple">{product.category}</Badge>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="text-sm font-bold text-gray-800">${product.price.toFixed(2)}</span>
-                  </td>
-                  <td className="px-5 py-3 hidden md:table-cell">
-                    <span className={`text-sm font-medium ${product.stock < 20 ? 'text-red-500' : 'text-gray-600'}`}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button className="p-2 rounded-lg hover:bg-primary-50 text-gray-400 hover:text-primary-600 transition-colors">
-                        <HiPencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => dispatch(deleteProduct(product.id))}
-                        className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <HiTrash className="w-4 h-4" />
-                      </button>
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    {[...Array(10)].map((_, j) => (
+                      <td key={j} className="px-4 py-4"><div className="h-5 w-full max-w-[80px] bg-gray-200 rounded-lg animate-pulse" /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : filtered.length > 0 ? (
+                filtered.map((product, idx) => {
+                  const isLowStock = product.quantity <= product.minQuantity;
+                  return (
+                    <tr key={product.id} className={`hover:bg-primary-50/30 transition-colors ${isLowStock ? 'bg-red-50/30' : ''}`}>
+                      <td className="px-4 py-4">
+                        <span className="text-sm font-bold text-gray-400">{idx + 1}</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-primary-400 flex items-center justify-center shadow-sm">
+                            <span className="text-xs font-bold text-white">{product.name.charAt(0)}</span>
+                          </div>
+                          <span className="text-sm font-bold text-gray-800">{product.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 hidden sm:table-cell">
+                        <span className="text-sm text-gray-600 font-mono bg-gray-50 px-2 py-0.5 rounded">{product.barcode || '—'}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden md:table-cell">
+                        <Badge color="purple">{product.category?.name || '—'}</Badge>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-sm font-semibold text-gray-600">${parseFloat(product.purchasePrice).toFixed(2)}</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-sm font-bold text-primary-600">${parseFloat(product.salePrice).toFixed(2)}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-bold ${isLowStock ? 'text-red-600' : 'text-gray-800'}`}>
+                            {product.quantity}
+                          </span>
+                          {isLowStock && (
+                            <span className="flex items-center gap-0.5 text-xs text-red-500 bg-red-50 px-1.5 py-0.5 rounded-md border border-red-200">
+                              <HiExclamation className="w-3 h-3" />
+                              منخفض
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 hidden xl:table-cell">
+                        <span className="text-sm text-gray-500">{product.minQuantity}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden xl:table-cell">
+                        <span className="text-xs text-gray-400">
+                          {new Date(product.updatedAt).toLocaleDateString('ar-EG', {
+                            month: 'short', day: 'numeric',
+                          })}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openEdit(product)}
+                            className="p-2 rounded-lg hover:bg-primary-50 text-gray-400 hover:text-primary-600 transition-colors"
+                            title="تعديل"
+                          >
+                            <HiPencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(product)}
+                            disabled={deleting === product.id}
+                            className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                            title="حذف"
+                          >
+                            {deleting === product.id ? (
+                              <div className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                            ) : (
+                              <HiTrash className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="10" className="px-5 py-16">
+                    <div className="flex flex-col items-center justify-center text-gray-300">
+                      <HiCube className="w-12 h-12 mb-3" />
+                      <p className="text-base font-semibold text-gray-400">لا توجد منتجات</p>
+                      <p className="text-sm text-gray-300 mt-1">
+                        {search ? 'جرب تعديل البحث' : 'أضف منتج جديد للبدء'}
+                      </p>
+                      {!search && (
+                        <Button icon={HiPlus} className="mt-4" onClick={() => { closeForm(); setShowForm(true); }}>
+                          إضافة منتج
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Add New Product">
+      {/* Add / Edit Modal */}
+      <Modal isOpen={showForm} onClose={closeForm} title={editing ? 'تعديل المنتج' : 'إضافة منتج جديد'} size="lg">
         <div className="space-y-4">
-          <Input
-            label="Product Name"
-            placeholder="e.g. Caramel Macchiato"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex justify-center mb-2">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-400 flex items-center justify-center shadow-xl shadow-primary-500/20">
+              <HiCube className="w-7 h-7 text-white" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Price ($)"
+              label="اسم المنتج"
+              placeholder="مثال: كوكا كولا"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <Input
+              label="الباركود"
+              placeholder="مثال: 123456"
+              value={form.barcode}
+              onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">التصنيف</label>
+            <select
+              value={form.categoryId}
+              onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+              className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+            >
+              <option value="">اختر التصنيف</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Input
+              label="سعر الشراء"
               type="number"
               step="0.01"
               placeholder="0.00"
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              value={form.purchasePrice}
+              onChange={(e) => setForm({ ...form, purchasePrice: e.target.value })}
             />
             <Input
-              label="Stock"
+              label="سعر البيع"
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={form.salePrice}
+              onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
+            />
+            <Input
+              label="الكمية"
               type="number"
               placeholder="0"
-              value={form.stock}
-              onChange={(e) => setForm({ ...form, stock: e.target.value })}
+              value={form.quantity}
+              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            />
+            <Input
+              label="الحد الأدنى"
+              type="number"
+              placeholder="0"
+              value={form.minQuantity}
+              onChange={(e) => setForm({ ...form, minQuantity: e.target.value })}
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Category</label>
-            <select
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-            >
-              <option>Hot Drinks</option>
-              <option>Cold Drinks</option>
-              <option>Pastries</option>
-              <option>Food</option>
-            </select>
-          </div>
-          <Input
-            label="Image URL (optional)"
-            placeholder="https://..."
-            value={form.image}
-            onChange={(e) => setForm({ ...form, image: e.target.value })}
-          />
-          <div className="flex gap-3 pt-2">
-            <Button variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>
-              Cancel
+
+          <div className="flex gap-3 pt-3">
+            <Button variant="ghost" className="flex-1" onClick={closeForm}>
+              إلغاء
             </Button>
-            <Button className="flex-1" onClick={handleSubmit}>
-              Add Product
+            <Button className="flex-1" onClick={handleSubmit} disabled={saving || !form.name.trim()}>
+              {saving ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  جاري الحفظ...
+                </div>
+              ) : (
+                editing ? 'حفظ التعديلات' : 'إضافة المنتج'
+              )}
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Delete Confirmation */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-scaleIn">
+            <div className="p-6 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+                <HiExclamationCircle className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">تأكيد الحذف</h3>
+              <p className="text-sm text-gray-500 mb-1">هل أنت متأكد من حذف المنتج</p>
+              <p className="text-base font-bold text-primary-600 mb-5">"{deleteTarget.name}"؟</p>
+              <p className="text-xs text-gray-400 mb-6">لا يمكن التراجع عن هذا الإجراء بعد التأكيد</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold transition-all active:scale-95"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={deleting === deleteTarget.id}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-500/25 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {deleting === deleteTarget.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      جاري الحذف...
+                    </>
+                  ) : (
+                    'نعم، احذف'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

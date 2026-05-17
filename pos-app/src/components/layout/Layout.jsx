@@ -4,17 +4,19 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 
 const pageTitles = {
-  '/': 'Dashboard',
-  '/pos': 'Point of Sale',
-  '/products': 'Products',
-  '/orders': 'Orders',
-  '/settings': 'Settings',
+  '/': 'لوحة التحكم',
+  '/pos': 'نقطة البيع',
+  '/categories': 'التصنيفات',
+  '/suppliers': 'الموردين',
+  '/products': 'المنتجات',
+  '/orders': 'الطلبات',
+  '/settings': 'الإعدادات',
 };
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const title = pageTitles[location.pathname] || 'QuickPOS';
+  const title = pageTitles[location.pathname] || 'Havana House';
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50/50">

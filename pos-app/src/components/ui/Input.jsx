@@ -6,7 +6,7 @@ export default function Input({ label, icon: Icon, className = '', ...props }) {
       )}
       <div className="relative">
         {Icon && (
-          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Icon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         )}
         <input
           className={`
@@ -15,7 +15,7 @@ export default function Input({ label, icon: Icon, className = '', ...props }) {
             placeholder:text-gray-400
             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
             transition-all duration-200
-            ${Icon ? 'pl-10' : ''}
+            ${Icon ? 'pr-10' : ''}
             ${className}
           `}
           {...props}

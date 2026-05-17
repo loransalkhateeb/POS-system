@@ -27,7 +27,7 @@ export default function Cart() {
       total: Number(total.toFixed(2)),
       status: 'completed',
       date: new Date().toLocaleString('en-CA', { hour12: false }).replace(',', ''),
-      customer: 'Walk-in',
+      customer: 'زائر',
       paymentMethod,
     };
     dispatch(addOrder(order));
@@ -41,7 +41,7 @@ export default function Cart() {
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <HiShoppingCart className="w-5 h-5 text-primary-500" />
-            <h3 className="font-bold text-gray-800">Current Order</h3>
+            <h3 className="font-bold text-gray-800">الطلب الحالي</h3>
             {cartItems.length > 0 && (
               <span className="w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center">
                 {cartItems.length}
@@ -54,7 +54,7 @@ export default function Cart() {
               className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 transition-colors"
             >
               <HiTrash className="w-3.5 h-3.5" />
-              Clear
+              مسح
             </button>
           )}
         </div>
@@ -63,8 +63,8 @@ export default function Cart() {
           {cartItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-300">
               <HiShoppingCart className="w-12 h-12 mb-2" />
-              <p className="text-sm font-medium">Cart is empty</p>
-              <p className="text-xs mt-1">Add items to get started</p>
+              <p className="text-sm font-medium">السلة فارغة</p>
+              <p className="text-xs mt-1">أضف عناصر للبدء</p>
             </div>
           ) : (
             cartItems.map((item) => <CartItem key={item.id} item={item} />)
@@ -75,15 +75,15 @@ export default function Cart() {
           <div className="p-4 border-t border-gray-100 space-y-3">
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between text-gray-500">
-                <span>Subtotal</span>
+                <span>المجموع الفرعي</span>
                 <span>${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-500">
-                <span>Tax (10%)</span>
+                <span>الضريبة (10%)</span>
                 <span>${tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg font-bold text-gray-800 pt-2 border-t border-dashed border-gray-200">
-                <span>Total</span>
+                <span>الإجمالي</span>
                 <span className="text-primary-600">${total.toFixed(2)}</span>
               </div>
             </div>
@@ -92,7 +92,7 @@ export default function Cart() {
               size="lg"
               onClick={() => setShowCheckout(true)}
             >
-              Charge ${total.toFixed(2)}
+              ادفع ${total.toFixed(2)}
             </Button>
           </div>
         )}
