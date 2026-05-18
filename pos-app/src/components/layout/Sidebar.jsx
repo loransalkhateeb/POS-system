@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   HiHome,
   HiShoppingCart,
@@ -8,6 +9,7 @@ import {
   HiLogout,
   HiTag,
   HiTruck,
+  HiExclamationCircle,
 } from 'react-icons/hi';
 
 const navItems = [
@@ -21,6 +23,31 @@ const navItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
+  const navigate = useNavigate();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:5000/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } catch {
+      // proceed with local logout even if the request fails
+    } finally {
+      localStorage.removeItem('token');
+      setLoggingOut(false);
+      setShowLogoutDialog(false);
+      navigate('/login');
+    }
+  };
+
   return (
     <>
       {isOpen && (
@@ -72,12 +99,58 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
 
         <div className="p-3 border-t border-primary-800">
-          <button className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-primary-300 hover:bg-primary-900 hover:text-white transition-all duration-200">
+          <button
+            onClick={() => setShowLogoutDialog(true)}
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-primary-300 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
+          >
             <HiLogout className="w-5 h-5" />
             تسجيل الخروج
           </button>
         </div>
       </aside>
+
+      {showLogoutDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !loggingOut && setShowLogoutDialog(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-[slideUp_0.3s_ease-out] overflow-hidden">
+            <div className="flex flex-col items-center pt-8 pb-2 px-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <HiExclamationCircle className="w-9 h-9 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">تسجيل الخروج</h3>
+              <p className="text-sm text-gray-500 text-center leading-relaxed">
+                هل أنت متأكد من أنك تريد تسجيل الخروج من النظام؟
+              </p>
+            </div>
+            <div className="flex gap-3 p-6">
+              <button
+                onClick={() => setShowLogoutDialog(false)}
+                disabled={loggingOut}
+                className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all duration-200 disabled:opacity-50"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-500/25 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {loggingOut ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    جاري الخروج...
+                  </>
+                ) : (
+                  'نعم، تسجيل الخروج'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
