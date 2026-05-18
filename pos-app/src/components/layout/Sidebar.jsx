@@ -19,7 +19,6 @@ import { isAdmin } from '../../utils/auth';
 
 const adminNav = [
   { path: '/', icon: HiHome, label: 'لوحة التحكم' },
-  { path: '/pos', icon: HiShoppingCart, label: 'نقطة البيع' },
   { path: '/categories', icon: HiTag, label: 'التصنيفات' },
   { path: '/suppliers', icon: HiTruck, label: 'الموردين' },
   { path: '/products', icon: HiCube, label: 'المنتجات' },

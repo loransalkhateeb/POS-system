@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   HiCube,
   HiPlus,
@@ -10,6 +10,8 @@ import {
   HiCurrencyDollar,
   HiTag,
   HiExclamation,
+  HiQrcode,
+  HiX,
 } from 'react-icons/hi';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -17,7 +19,17 @@ import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import { isAdmin } from '../utils/auth';
 
-const API_BASE = `http://localhost:5000/api/${isAdmin() ? 'admin' : 'user'}`;
+function getApiBase() {
+  return `http://localhost:5000/api/${isAdmin() ? 'admin' : 'user'}`;
+}
+
+function getHeaders() {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -33,20 +45,101 @@ export default function Products() {
   const [deleting, setDeleting] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [barcodeLocked, setBarcodeLocked] = useState(false);
+  const barcodeRef = useRef(null);
+  const barcodeLockRef = useRef(false);
+  barcodeLockRef.current = barcodeLocked;
 
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+  useEffect(() => {
+    if (!showForm) return;
+    let buffer = '';
+    let lastKeyTime = 0;
+    let resetTimer = null;
+
+    const handleKeyDown = (e) => {
+      if (barcodeLockRef.current) return;
+      if (document.activeElement === barcodeRef.current) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const now = Date.now();
+      const gap = now - lastKeyTime;
+      lastKeyTime = now;
+
+      if (gap > 50) buffer = '';
+
+      if (e.key === 'Enter') {
+        clearTimeout(resetTimer);
+        if (buffer.length >= 3) {
+          e.preventDefault();
+          e.stopPropagation();
+          setForm((prev) => ({ ...prev, barcode: buffer }));
+          setBarcodeLocked(true);
+        }
+        buffer = '';
+        return;
+      }
+
+      if (e.key.length === 1) {
+        buffer += e.key;
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => { buffer = ''; }, 100);
+
+        if (buffer.length >= 2 && gap <= 50) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      clearTimeout(resetTimer);
+    };
+  }, [showForm]);
+
+  useEffect(() => {
+    if (!showForm) return;
+    if (barcodeLocked) return;
+    const input = barcodeRef.current;
+    if (!input) return;
+    let lockTimer = null;
+
+    const handleInput = () => {
+      clearTimeout(lockTimer);
+      lockTimer = setTimeout(() => {
+        if (input.value.length >= 3) {
+          setForm((prev) => ({ ...prev, barcode: input.value }));
+          setBarcodeLocked(true);
+        }
+      }, 150);
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && input.value.length >= 3) {
+        e.preventDefault();
+        setForm((prev) => ({ ...prev, barcode: input.value }));
+        setBarcodeLocked(true);
+      }
+    };
+
+    input.addEventListener('input', handleInput);
+    input.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(lockTimer);
+      input.removeEventListener('input', handleInput);
+      input.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showForm, barcodeLocked]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/products`, { headers });
+      const res = await fetch(`${getApiBase()}/products`, { headers: getHeaders() });
       if (!res.ok) throw new Error(`فشل في تحميل المنتجات (${res.status})`);
       const data = await res.json();
+      data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setProducts(data);
     } catch (err) {
       setError(err.message);
@@ -57,7 +150,7 @@ export default function Products() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/categories`, { headers });
+      const res = await fetch(`${getApiBase()}/categories`, { headers: getHeaders() });
       if (res.ok) setCategories(await res.json());
     } catch {}
   }, []);
@@ -69,9 +162,19 @@ export default function Products() {
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.salePrice) return;
+    if (form.barcode.trim()) {
+      const duplicate = products.find(
+        (p) => p.barcode === form.barcode.trim() && (!editing || p.id !== editing.id)
+      );
+      if (duplicate) {
+        setError(`الباركود "${form.barcode.trim()}" موجود بالفعل للمنتج "${duplicate.name}"`);
+        return;
+      }
+    }
     setSaving(true);
     try {
-      const url = editing ? `${API_BASE}/products/${editing.id}` : `${API_BASE}/products`;
+      const base = getApiBase();
+      const url = editing ? `${base}/products/${editing.id}` : `${base}/products`;
       const method = editing ? 'PUT' : 'POST';
 
       const body = {
@@ -84,7 +187,7 @@ export default function Products() {
         minQuantity: parseInt(form.minQuantity) || 0,
       };
 
-      const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+      const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(body) });
       if (!res.ok) throw new Error('فشل في حفظ المنتج');
 
       closeForm();
@@ -100,7 +203,7 @@ export default function Products() {
     if (!deleteTarget) return;
     setDeleting(deleteTarget.id);
     try {
-      const res = await fetch(`${API_BASE}/products/${deleteTarget.id}`, { method: 'DELETE', headers });
+      const res = await fetch(`${getApiBase()}/products/${deleteTarget.id}`, { method: 'DELETE', headers: getHeaders() });
       if (!res.ok) throw new Error('فشل في حذف المنتج');
       setDeleteTarget(null);
       fetchProducts();
@@ -122,12 +225,14 @@ export default function Products() {
       quantity: product.quantity?.toString() || '',
       minQuantity: product.minQuantity?.toString() || '',
     });
+    setBarcodeLocked(!!product.barcode);
     setShowForm(true);
   };
 
   const closeForm = () => {
     setShowForm(false);
     setEditing(null);
+    setBarcodeLocked(false);
     setForm({ name: '', barcode: '', categoryId: '', purchasePrice: '', salePrice: '', quantity: '', minQuantity: '' });
   };
 
@@ -371,12 +476,40 @@ export default function Products() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-            <Input
-              label="الباركود"
-              placeholder="مثال: 123456"
-              value={form.barcode}
-              onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-            />
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">الباركود</label>
+              <div className="relative">
+                <HiQrcode className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                {barcodeLocked ? (
+                  <>
+                    <input
+                      type="text"
+                      value={form.barcode}
+                      readOnly
+                      className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-green-300 bg-green-50/50 text-green-800 font-mono font-semibold text-sm cursor-default"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setForm({ ...form, barcode: '' }); setBarcodeLocked(false); }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-gray-200 hover:bg-red-100 text-gray-500 hover:text-red-500 transition-colors"
+                    >
+                      <HiX className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <input
+                    ref={barcodeRef}
+                    type="text"
+                    placeholder="امسح الباركود بالقارئ..."
+                    defaultValue=""
+                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200"
+                  />
+                )}
+              </div>
+              <p className="text-xs text-gray-400">
+                {barcodeLocked ? 'تم مسح الباركود بنجاح — اضغط ✕ لإعادة المسح' : 'امسح الباركود بالقارئ مباشرة'}
+              </p>
+            </div>
           </div>
 
           <div className="space-y-1.5">

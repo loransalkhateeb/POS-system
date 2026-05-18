@@ -17,7 +17,17 @@ import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import { isAdmin } from '../utils/auth';
 
-const API_BASE = `http://localhost:5000/api/${isAdmin() ? 'admin' : 'user'}`;
+function getApiBase() {
+  return `http://localhost:5000/api/${isAdmin() ? 'admin' : 'user'}`;
+}
+
+function getHeaders() {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export default function POS() {
   const [categories, setCategories] = useState([]);
@@ -25,7 +35,12 @@ export default function POS() {
   const [loadingData, setLoadingData] = useState(true);
 
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('posCart');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [barcode, setBarcode] = useState('');
   const [barcodeError, setBarcodeError] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
@@ -35,18 +50,14 @@ export default function POS() {
 
   const barcodeRef = useRef(null);
 
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   const fetchData = useCallback(async () => {
     setLoadingData(true);
     try {
+      const apiBase = getApiBase();
+      const headers = getHeaders();
       const [catRes, prodRes] = await Promise.all([
-        fetch(`${API_BASE}/categories`, { headers }),
-        fetch(`${API_BASE}/products`, { headers }),
+        fetch(`${apiBase}/categories`, { headers }),
+        fetch(`${apiBase}/products`, { headers }),
       ]);
       if (catRes.ok) setCategories(await catRes.json());
       if (prodRes.ok) setProducts(await prodRes.json());
@@ -60,25 +71,12 @@ export default function POS() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
+    localStorage.setItem('posCart', JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  useEffect(() => {
     if (!loadingData) barcodeRef.current?.focus();
   }, [loadingData]);
-
-  // Keep barcode field focused — scanner devices type into the focused input
-  useEffect(() => {
-    const refocus = () => {
-      setTimeout(() => {
-        if (
-          document.activeElement?.tagName !== 'INPUT' &&
-          document.activeElement?.tagName !== 'SELECT' &&
-          !receipt
-        ) {
-          barcodeRef.current?.focus();
-        }
-      }, 50);
-    };
-    window.addEventListener('click', refocus);
-    return () => window.removeEventListener('click', refocus);
-  }, [receipt]);
 
   const processBarcode = useCallback((code) => {
     const trimmed = code.trim();
@@ -121,6 +119,72 @@ export default function POS() {
     barcodeRef.current?.focus();
   }, [products]);
 
+  // Global barcode scanner detection — scanners type rapidly (< 50ms between keys) then send Enter.
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = 0;
+    let resetTimer = null;
+
+    const handleKeyDown = (e) => {
+      if (receipt) return;
+      if (document.activeElement === barcodeRef.current) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const now = Date.now();
+      const gap = now - lastKeyTime;
+      lastKeyTime = now;
+
+      if (gap > 50) buffer = '';
+
+      if (e.key === 'Enter') {
+        clearTimeout(resetTimer);
+        if (buffer.length >= 3) {
+          e.preventDefault();
+          e.stopPropagation();
+          processBarcode(buffer);
+          setBarcode('');
+          barcodeRef.current?.focus();
+        }
+        buffer = '';
+        return;
+      }
+
+      if (e.key.length === 1) {
+        buffer += e.key;
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => { buffer = ''; }, 100);
+
+        if (buffer.length >= 2 && gap <= 50) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      clearTimeout(resetTimer);
+    };
+  }, [processBarcode, receipt]);
+
+  // Refocus barcode input when clicking outside of input fields
+  useEffect(() => {
+    const refocus = () => {
+      setTimeout(() => {
+        if (
+          document.activeElement?.tagName !== 'INPUT' &&
+          document.activeElement?.tagName !== 'SELECT' &&
+          !receipt
+        ) {
+          barcodeRef.current?.focus();
+        }
+      }, 50);
+    };
+    window.addEventListener('click', refocus);
+    return () => window.removeEventListener('click', refocus);
+  }, [receipt]);
+
   const filteredProducts = products.filter((p) =>
     !selectedCategory || p.categoryId === selectedCategory
   );
@@ -149,10 +213,12 @@ export default function POS() {
 
   const handleBarcodeScan = (e) => {
     e.preventDefault();
-    processBarcode(barcode);
+    const value = barcodeRef.current?.value || barcode;
+    processBarcode(value);
   };
 
   const updateQuantity = (productId, delta) => {
+    if (delta < 0) setBarcodeError('');
     setCartItems((prev) =>
       prev
         .map((item) => {
@@ -167,6 +233,7 @@ export default function POS() {
   };
 
   const removeFromCart = (productId) => {
+    setBarcodeError('');
     setCartItems((prev) => prev.filter((item) => item.productId !== productId));
   };
 
@@ -210,9 +277,9 @@ export default function POS() {
         })),
       };
 
-      const res = await fetch(`${API_BASE}/sales`, {
+      const res = await fetch(`${getApiBase()}/sales`, {
         method: 'POST',
-        headers,
+        headers: getHeaders(),
         body: JSON.stringify(body),
       });
 

@@ -39,6 +39,9 @@ export default function Layout() {
     if (!isAdmin() && adminOnlyPaths.includes(location.pathname)) {
       navigate('/pos');
     }
+    if (isAdmin() && location.pathname === '/pos') {
+      navigate('/');
+    }
   }, [location.pathname, navigate]);
 
   useEffect(() => {
