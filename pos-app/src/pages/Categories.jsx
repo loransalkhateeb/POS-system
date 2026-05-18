@@ -15,7 +15,17 @@ import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import { isAdmin } from '../utils/auth';
 
-const API_BASE = `http://localhost:5000/api/${isAdmin() ? 'admin' : 'user'}`;
+function getApiBase() {
+  return `http://localhost:5000/api/${isAdmin() ? 'admin' : 'user'}`;
+}
+
+function getHeaders() {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
@@ -29,17 +39,11 @@ export default function Categories() {
   const [deleting, setDeleting] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/categories`, { headers });
+      const res = await fetch(`${getApiBase()}/categories`, { headers: getHeaders() });
       if (!res.ok) throw new Error(`فشل في تحميل التصنيفات (${res.status})`);
       const data = await res.json();
       setCategories(data);
@@ -58,14 +62,15 @@ export default function Categories() {
     if (!formName.trim()) return;
     setSaving(true);
     try {
+      const base = getApiBase();
       const url = editingCategory
-        ? `${API_BASE}/categories/${editingCategory.id}`
-        : `${API_BASE}/categories`;
+        ? `${base}/categories/${editingCategory.id}`
+        : `${base}/categories`;
       const method = editingCategory ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
-        headers,
+        headers: getHeaders(),
         body: JSON.stringify({ name: formName }),
       });
 
@@ -86,9 +91,9 @@ export default function Categories() {
     if (!deleteTarget) return;
     setDeleting(deleteTarget.id);
     try {
-      const res = await fetch(`${API_BASE}/categories/${deleteTarget.id}`, {
+      const res = await fetch(`${getApiBase()}/categories/${deleteTarget.id}`, {
         method: 'DELETE',
-        headers,
+        headers: getHeaders(),
       });
       if (!res.ok) throw new Error('فشل في حذف التصنيف');
       setDeleteTarget(null);
