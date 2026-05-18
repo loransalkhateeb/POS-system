@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   HiCurrencyDollar,
   HiShoppingBag,
@@ -6,6 +7,7 @@ import {
   HiCalendar,
   HiRefresh,
   HiExclamationCircle,
+  HiPlus,
 } from 'react-icons/hi';
 import StatCard from '../components/dashboard/StatCard';
 import SalesChart from '../components/dashboard/SalesChart';
@@ -23,6 +25,7 @@ const periods = [
 ];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -123,15 +126,24 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* تحديث */}
-          <button
-            onClick={() => fetchReport(true)}
-            disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-50 text-primary-600 text-sm font-semibold hover:bg-primary-100 transition-all active:scale-95 disabled:opacity-50"
-          >
-            <HiRefresh className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            تحديث
-          </button>
+          {/* الإجراءات */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => fetchReport(true)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-50 text-primary-600 text-sm font-semibold hover:bg-primary-100 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <HiRefresh className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              تحديث
+            </button>
+            <button
+              onClick={() => navigate('/purchases/create')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 shadow-lg shadow-primary-500/25 transition-all active:scale-95"
+            >
+              <HiPlus className="w-4 h-4" />
+              عملية شراء جديدة
+            </button>
+          </div>
         </div>
       </div>
 

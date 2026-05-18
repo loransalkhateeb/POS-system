@@ -10,16 +10,29 @@ import {
   HiTag,
   HiTruck,
   HiExclamationCircle,
+  HiChartBar,
+  HiSwitchHorizontal,
+  HiUsers,
+  HiCollection,
 } from 'react-icons/hi';
+import { isAdmin } from '../../utils/auth';
 
-const navItems = [
+const adminNav = [
   { path: '/', icon: HiHome, label: 'لوحة التحكم' },
   { path: '/pos', icon: HiShoppingCart, label: 'نقطة البيع' },
   { path: '/categories', icon: HiTag, label: 'التصنيفات' },
   { path: '/suppliers', icon: HiTruck, label: 'الموردين' },
   { path: '/products', icon: HiCube, label: 'المنتجات' },
   { path: '/orders', icon: HiClipboardList, label: 'الطلبات' },
+  { path: '/sales-report', icon: HiChartBar, label: 'تقرير المبيعات' },
+  { path: '/users', icon: HiUsers, label: 'المستخدمين' },
+  { path: '/inventory', icon: HiCollection, label: 'المخزون' },
   { path: '/settings', icon: HiCog, label: 'الإعدادات' },
+];
+
+const userNav = [
+  { path: '/pos', icon: HiShoppingCart, label: 'نقطة البيع' },
+  { path: '/my-transactions', icon: HiSwitchHorizontal, label: 'معاملاتي' },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -31,17 +44,21 @@ export default function Sidebar({ isOpen, onClose }) {
     setLoggingOut(true);
     try {
       const token = localStorage.getItem('token');
+      const refreshToken = localStorage.getItem('refreshToken');
       await fetch('http://localhost:5000/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ refreshToken }),
       });
     } catch {
       // proceed with local logout even if the request fails
     } finally {
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
       setLoggingOut(false);
       setShowLogoutDialog(false);
       navigate('/login');
@@ -78,7 +95,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
+          {(isAdmin() ? adminNav : userNav).map((item) => (
             <NavLink
               key={item.path}
               to={item.path}

@@ -29,8 +29,12 @@ export default function Login() {
         throw new Error(data.message || 'فشل تسجيل الدخول');
       }
 
-      localStorage.setItem('token', data.token);
-      navigate('/');
+      localStorage.setItem('token', data.tokens.access.token);
+      localStorage.setItem('refreshToken', data.tokens.refresh.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      const role = data.user?.role?.name || '';
+      navigate(role === 'admin' ? '/' : '/pos');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -126,12 +130,7 @@ export default function Login() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-            <p className="text-sm text-gray-500">
-              ليس لديك حساب؟{' '}
-              <Link to="/register/user" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
-                إنشاء حساب
-              </Link>
-            </p>
+            <p className="text-xs text-gray-400">Havana House — نظام إدارة المبيعات</p>
           </div>
         </div>
       </div>

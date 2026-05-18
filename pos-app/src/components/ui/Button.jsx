@@ -7,9 +7,9 @@ const variants = {
 };
 
 const sizes = {
-  sm: 'px-3 py-1.5 text-xs',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base',
+  sm: 'px-5 py-3 text-base',
+  md: 'px-8 py-4 text-lg',
+  lg: 'px-10 py-5 text-xl',
 };
 
 export default function Button({
@@ -30,7 +30,7 @@ export default function Button({
       `}
       {...props}
     >
-      {Icon && <Icon className="w-4 h-4" />}
+      {Icon && <Icon className="w-6 h-6" />}
       {children}
     </button>
   );

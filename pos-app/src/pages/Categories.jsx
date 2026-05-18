@@ -13,8 +13,9 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
+import { isAdmin } from '../utils/auth';
 
-const API_BASE = 'http://localhost:5000/api/admin';
+const API_BASE = `http://localhost:5000/api/${isAdmin() ? 'admin' : 'user'}`;
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);

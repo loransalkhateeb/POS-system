@@ -7,6 +7,11 @@ import Orders from './pages/Orders';
 import Settings from './pages/Settings';
 import Categories from './pages/Categories';
 import Suppliers from './pages/Suppliers';
+import CreatePurchase from './pages/CreatePurchase';
+import SalesReport from './pages/SalesReport';
+import MyTransactions from './pages/MyTransactions';
+import Users from './pages/Users';
+import Inventory from './pages/Inventory';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -23,6 +28,11 @@ export default function App() {
           <Route path="orders" element={<Orders />} />
           <Route path="categories" element={<Categories />} />
           <Route path="suppliers" element={<Suppliers />} />
+          <Route path="purchases/create" element={<CreatePurchase />} />
+          <Route path="sales-report" element={<SalesReport />} />
+          <Route path="my-transactions" element={<MyTransactions />} />
+          <Route path="users" element={<Users />} />
+          <Route path="inventory" element={<Inventory />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

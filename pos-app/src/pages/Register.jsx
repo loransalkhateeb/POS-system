@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { isAdmin } from '../utils/auth';
 import {
   HiUser,
   HiMail,
@@ -37,6 +38,12 @@ export default function Register() {
   const { role } = useParams();
   const navigate = useNavigate();
   const config = ROLE_CONFIG[role] || ROLE_CONFIG.user;
+
+  useEffect(() => {
+    if (!isAdmin()) {
+      navigate('/pos');
+    }
+  }, [navigate]);
 
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
