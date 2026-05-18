@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiPlus,
@@ -17,7 +17,6 @@ import {
   HiChevronDown,
   HiPencil,
   HiQrcode,
-  HiX,
 } from 'react-icons/hi';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -62,11 +61,6 @@ export default function CreatePurchase() {
   });
   const [savingProduct, setSavingProduct] = useState(false);
   const [productError, setProductError] = useState('');
-  const [barcodeLocked, setBarcodeLocked] = useState(false);
-  const barcodeRef = useRef(null);
-  const barcodeLockRef = useRef(false);
-  barcodeLockRef.current = barcodeLocked;
-
   useEffect(() => {
     if (!showProductForm) return;
     let buffer = '';
@@ -74,8 +68,6 @@ export default function CreatePurchase() {
     let resetTimer = null;
 
     const handleKeyDown = (e) => {
-      if (barcodeLockRef.current) return;
-      if (document.activeElement === barcodeRef.current) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       const now = Date.now();
@@ -90,7 +82,6 @@ export default function CreatePurchase() {
           e.preventDefault();
           e.stopPropagation();
           setProductForm((prev) => ({ ...prev, barcode: buffer }));
-          setBarcodeLocked(true);
         }
         buffer = '';
         return;
@@ -114,40 +105,6 @@ export default function CreatePurchase() {
       clearTimeout(resetTimer);
     };
   }, [showProductForm]);
-
-  useEffect(() => {
-    if (!showProductForm) return;
-    if (barcodeLocked) return;
-    const input = barcodeRef.current;
-    if (!input) return;
-    let lockTimer = null;
-
-    const handleInput = () => {
-      clearTimeout(lockTimer);
-      lockTimer = setTimeout(() => {
-        if (input.value.length >= 3) {
-          setProductForm((prev) => ({ ...prev, barcode: input.value }));
-          setBarcodeLocked(true);
-        }
-      }, 150);
-    };
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Enter' && input.value.length >= 3) {
-        e.preventDefault();
-        setProductForm((prev) => ({ ...prev, barcode: input.value }));
-        setBarcodeLocked(true);
-      }
-    };
-
-    input.addEventListener('input', handleInput);
-    input.addEventListener('keydown', handleKeyDown);
-    return () => {
-      clearTimeout(lockTimer);
-      input.removeEventListener('input', handleInput);
-      input.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [showProductForm, barcodeLocked]);
 
   const getHeaders = () => {
     const token = localStorage.getItem('token');
@@ -222,7 +179,6 @@ export default function CreatePurchase() {
   const openCreateProduct = () => {
     setEditingProduct(null);
     setProductForm({ name: '', barcode: '', categoryId: '', purchasePrice: '', salePrice: '', quantity: '0', minQuantity: '0' });
-    setBarcodeLocked(false);
     setProductError('');
     setShowProductForm(true);
   };
@@ -238,7 +194,6 @@ export default function CreatePurchase() {
       quantity: product.quantity?.toString() || '0',
       minQuantity: product.minQuantity?.toString() || '0',
     });
-    setBarcodeLocked(!!product.barcode);
     setProductError('');
     setShowProductForm(true);
   };
@@ -246,7 +201,6 @@ export default function CreatePurchase() {
   const closeProductForm = () => {
     setShowProductForm(false);
     setEditingProduct(null);
-    setBarcodeLocked(false);
     setProductError('');
     setProductForm({ name: '', barcode: '', categoryId: '', purchasePrice: '', salePrice: '', quantity: '0', minQuantity: '0' });
   };
@@ -824,35 +778,14 @@ export default function CreatePurchase() {
               <label className="block text-sm font-medium text-gray-700">الباركود</label>
               <div className="relative">
                 <HiQrcode className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                {barcodeLocked ? (
-                  <>
-                    <input
-                      type="text"
-                      value={productForm.barcode}
-                      readOnly
-                      className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-green-300 bg-green-50/50 text-green-800 font-mono font-semibold text-sm cursor-default"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setProductForm({ ...productForm, barcode: '' }); setBarcodeLocked(false); }}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-gray-200 hover:bg-red-100 text-gray-500 hover:text-red-500 transition-colors"
-                    >
-                      <HiX className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <input
-                    ref={barcodeRef}
-                    type="text"
-                    placeholder="امسح الباركود بالقارئ..."
-                    defaultValue=""
-                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200"
-                  />
-                )}
+                <input
+                  type="text"
+                  placeholder="امسح الباركود أو أدخله يدوياً"
+                  value={productForm.barcode}
+                  onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })}
+                  className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200"
+                />
               </div>
-              <p className="text-xs text-gray-400">
-                {barcodeLocked ? 'تم مسح الباركود بنجاح — اضغط ✕ لإعادة المسح' : 'امسح الباركود بالقارئ مباشرة'}
-              </p>
             </div>
           </div>
 
